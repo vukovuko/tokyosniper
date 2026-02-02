@@ -64,12 +64,12 @@ export default async function StaysPage() {
           </li>
           <li>
             <span className="font-medium text-foreground">Schedule:</span> Cron
-            checks every 12 hours via{" "}
+            checks daily via{" "}
             <code className="rounded bg-muted px-1">/api/cron/check-stays</code>
           </li>
           <li>
             <span className="font-medium text-foreground">Alerts:</span>{" "}
-            Telegram for stays under $30/night or great deals under $40/night
+            Telegram for stays under $45/night or great deals under $60/night
             (kitchen + wifi + 8+ rating)
           </li>
         </ul>

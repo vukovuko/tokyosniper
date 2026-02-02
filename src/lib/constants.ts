@@ -80,14 +80,14 @@ export const MONITORED_PROPERTIES = [
 
 // Default alert thresholds
 export const DEFAULT_FLIGHT_ALERTS = {
-  instantEurCents: 40000, // €400 round trip
-  digestEurCents: 50000, // €500 round trip
+  instantEurCents: 60000, // €600 round trip
+  digestEurCents: 80000, // €800 round trip
   dropPercent: 10,
 } as const;
 
 export const DEFAULT_STAY_ALERTS = {
-  instantUsdCents: 3000, // $30/night
-  goodDealUsdCents: 4000, // $40/night with kitchen+wifi+8+ rating
+  instantUsdCents: 4500, // $45/night
+  goodDealUsdCents: 6000, // $60/night with kitchen+wifi+8+ rating
   dropPercent: 15,
-  newListingUsdCents: 4500, // $45/night
+  newListingUsdCents: 6000, // $60/night
 } as const;

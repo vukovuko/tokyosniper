@@ -7,6 +7,7 @@ import {
   DEFAULT_STAY_ALERTS,
   NEIGHBORHOODS,
   NEIGHBORHOOD_LABELS,
+  TRIP_WINDOWS,
 } from "@/src/lib/constants";
 import type { Neighborhood } from "@/src/lib/constants";
 import type { Currency } from "@/src/types";
@@ -21,7 +22,7 @@ const BUILT_IN_ALERTS = [
   {
     icon: "plane",
     label: "Cheap round-trip flight",
-    description: `BUD → NRT/HND under ${formatPrice(DEFAULT_FLIGHT_ALERTS.instantEurCents, "EUR")} round trip (Mar–Apr 2026)`,
+    description: `BUD → NRT/HND under ${formatPrice(DEFAULT_FLIGHT_ALERTS.instantEurCents, "EUR")} round trip (${TRIP_WINDOWS.map((w) => w.label).join(", ")})`,
   },
   {
     icon: "plane",

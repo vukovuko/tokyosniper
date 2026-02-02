@@ -53,14 +53,14 @@ export default async function FlightsPage() {
           </li>
           <li>
             <span className="font-medium text-foreground">Schedule:</span> Cron
-            checks every 6 hours via{" "}
+            checks daily via{" "}
             <code className="rounded bg-muted px-1">
               /api/cron/check-flights
             </code>
           </li>
           <li>
             <span className="font-medium text-foreground">Alerts:</span>{" "}
-            Telegram notification for round trips under €400 or price drops
+            Telegram notification for round trips under €600 or price drops
             &gt;10%
           </li>
         </ul>
