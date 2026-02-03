@@ -6,7 +6,8 @@
       "Bash(npm run build:*)",
       "WebFetch(domain:developers.skyscanner.net)",
       "WebFetch(domain:api.apify.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

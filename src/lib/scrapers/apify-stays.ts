@@ -56,6 +56,7 @@ export async function scrapeBookingCom(
       propertyType: "Apartments",
       sortBy: "price",
       maxPages: 20,
+      useFilters: true,
     });
 
     const { items } = await client.dataset(run.defaultDatasetId).listItems();
@@ -110,13 +111,11 @@ export async function scrapeAirbnb(
   try {
     const label = NEIGHBORHOOD_LABELS[neighborhood];
     const run = await client.actor(APIFY_ACTORS.airbnb).call({
-      location: `${label}, Tokyo, Japan`,
+      locationQuery: `${label}, Tokyo, Japan`,
       checkIn,
       checkOut,
-      adults: 1,
       currency: "USD",
-      maxItems: 20,
-      roomType: "entire_home",
+      maxListings: 20,
     });
 
     const { items } = await client.dataset(run.defaultDatasetId).listItems();

@@ -17,6 +17,7 @@ interface StayCheckResult {
   newRecords: number;
   errors: string[];
   cheapestUsdCents: number | null;
+  stays: StayResult[];
 }
 
 /** Generate check-in/check-out pairs: weekly samples × trip windows. */
@@ -144,6 +145,7 @@ export async function fetchAndStoreStays(): Promise<StayCheckResult> {
     newRecords,
     errors,
     cheapestUsdCents: cheapest,
+    stays: unique,
   };
 }
 

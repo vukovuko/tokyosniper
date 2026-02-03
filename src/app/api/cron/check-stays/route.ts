@@ -3,7 +3,7 @@ import { checkStayAlerts } from "@/src/lib/services/alerts";
 import { invalidateKeys } from "@/src/lib/cache";
 import { redis } from "@/src/lib/cache";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const DEDUP_KEY = "cron:stays:lastRun";
 const DEDUP_TTL = 300;
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   }
 
   const result = await fetchAndStoreStays();
-  const alertResult = await checkStayAlerts([]);
+  const alertResult = await checkStayAlerts(result.stays);
 
   await invalidateKeys("dashboard:*", "stays:*");
 

@@ -1,15 +1,11 @@
 import { db } from "@/src/db";
 import { alertConfigs, alertHistory, flightPrices } from "@/src/db/schema";
-import { eq, and, lt, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import {
   DEFAULT_FLIGHT_ALERTS,
   DEFAULT_STAY_ALERTS,
 } from "@/src/lib/constants";
-import {
-  sendTelegramMessage,
-  formatFlightAlert,
-  formatStayAlert,
-} from "./telegram";
+import { sendTelegramMessage } from "./telegram";
 import type { FlightResult, StayResult } from "@/src/types";
 
 interface AlertCheckResult {
@@ -17,32 +13,64 @@ interface AlertCheckResult {
   errors: string[];
 }
 
+interface FlightDeal {
+  flight: FlightResult;
+  reason: string;
+  previousPrice?: number;
+}
+
+interface StayDeal {
+  stay: StayResult;
+  reason: string;
+}
+
+function formatFlightLine(deal: FlightDeal): string {
+  const f = deal.flight;
+  const price = (f.priceEurCents / 100).toFixed(0);
+  let line = `• <b>€${price}</b> ${f.origin}→${f.destination}`;
+  line += ` (${f.departureDate}`;
+  if (f.returnDate) line += `–${f.returnDate}`;
+  line += `)`;
+  if (f.airline) line += ` ${f.airline}`;
+  if (deal.previousPrice) {
+    const prev = (deal.previousPrice / 100).toFixed(0);
+    const drop = (
+      ((deal.previousPrice - f.priceEurCents) / deal.previousPrice) *
+      100
+    ).toFixed(0);
+    line += ` <i>(was €${prev}, -${drop}%)</i>`;
+  }
+  if (f.bookingUrl) line += `\n  🔗 <a href="${f.bookingUrl}">Book</a>`;
+  return line;
+}
+
+function formatStayLine(deal: StayDeal): string {
+  const s = deal.stay;
+  const price = (s.pricePerNightUsdCents / 100).toFixed(0);
+  let line = `• <b>$${price}/night</b> ${s.name}`;
+  line += ` (${s.neighborhood}, ${s.platform})`;
+  if (s.rating) line += ` ⭐${s.rating}`;
+  if (s.url) line += `\n  🔗 <a href="${s.url}">View</a>`;
+  return line;
+}
+
 export async function checkFlightAlerts(
   newFlights: FlightResult[],
 ): Promise<AlertCheckResult> {
-  let alertsSent = 0;
   const errors: string[] = [];
+  const deals: FlightDeal[] = [];
 
   for (const flight of newFlights) {
-    // Instant alert: round trip under €400
+    // Check: round trip under threshold
     if (
       flight.returnDate &&
       flight.priceEurCents < DEFAULT_FLIGHT_ALERTS.instantEurCents
     ) {
-      const msg = formatFlightAlert({
-        ...flight,
-        stops: flight.stops ?? 0,
-      });
-      const sent = await sendTelegramMessage(msg);
-      if (sent) {
-        await logAlert("flight", msg, flight.priceEurCents, "EUR");
-        alertsSent++;
-      } else {
-        errors.push("Failed to send flight instant alert");
-      }
+      deals.push({ flight, reason: "under €800" });
+      continue;
     }
 
-    // Check against previous lowest price
+    // Check: price drop >10%
     const previousLowest = await db
       .select({ priceEurCents: flightPrices.priceEurCents })
       .from(flightPrices)
@@ -61,21 +89,16 @@ export async function checkFlightAlerts(
         ((prevPrice - flight.priceEurCents) / prevPrice) * 100;
 
       if (dropPercent >= DEFAULT_FLIGHT_ALERTS.dropPercent) {
-        const msg = formatFlightAlert({
-          ...flight,
-          stops: flight.stops ?? 0,
-          previousPriceEurCents: prevPrice,
+        deals.push({
+          flight,
+          reason: `${dropPercent.toFixed(0)}% drop`,
+          previousPrice: prevPrice,
         });
-        const sent = await sendTelegramMessage(msg);
-        if (sent) {
-          await logAlert("flight", msg, flight.priceEurCents, "EUR");
-          alertsSent++;
-        }
       }
     }
   }
 
-  // Check custom alert configs
+  // Check custom configs
   const configs = await db
     .select()
     .from(alertConfigs)
@@ -93,42 +116,58 @@ export async function checkFlightAlerts(
             : flight.priceEurCents;
 
       if (priceCents < config.thresholdCents) {
-        const msg = formatFlightAlert({
-          ...flight,
-          stops: flight.stops ?? 0,
-        });
-        const sent = await sendTelegramMessage(
-          `🔔 Alert: ${config.label}\n\n${msg}`,
+        const alreadyAdded = deals.some(
+          (d) =>
+            d.flight.departureDate === flight.departureDate &&
+            d.flight.destination === flight.destination &&
+            d.flight.priceEurCents === flight.priceEurCents,
         );
-        if (sent) {
-          await logAlert("flight", msg, priceCents, config.currency, config.id);
-          alertsSent++;
+        if (!alreadyAdded) {
+          deals.push({ flight, reason: config.label });
         }
       }
     }
   }
 
-  return { alertsSent, errors };
+  // Send one consolidated message
+  if (deals.length > 0) {
+    let msg = `✈️ <b>FLIGHT DEALS FOUND (${deals.length})</b>\n\n`;
+    for (const deal of deals) {
+      msg += formatFlightLine(deal) + "\n\n";
+    }
+
+    const sent = await sendTelegramMessage(msg);
+    if (sent) {
+      for (const deal of deals) {
+        await logAlert(
+          "flight",
+          `${deal.reason}`,
+          deal.flight.priceEurCents,
+          "EUR",
+        );
+      }
+    } else {
+      errors.push("Failed to send consolidated flight alert");
+    }
+  }
+
+  return { alertsSent: deals.length > 0 ? 1 : 0, errors };
 }
 
 export async function checkStayAlerts(
   newStays: StayResult[],
 ): Promise<AlertCheckResult> {
-  let alertsSent = 0;
   const errors: string[] = [];
+  const deals: StayDeal[] = [];
 
   for (const stay of newStays) {
-    // Instant alert: under $30/night
+    // Check: under instant threshold
     if (stay.pricePerNightUsdCents < DEFAULT_STAY_ALERTS.instantUsdCents) {
-      const msg = formatStayAlert(stay);
-      const sent = await sendTelegramMessage(msg);
-      if (sent) {
-        await logAlert("stay", msg, stay.pricePerNightUsdCents, "USD");
-        alertsSent++;
-      }
+      deals.push({ stay, reason: "under $45/night" });
+      continue;
     }
 
-    // Good deal: under $40/night with kitchen + wifi + 8+ rating
+    // Check: good deal with amenities
     const hasKitchen = stay.amenities?.some((a) =>
       a.toLowerCase().includes("kitchen"),
     );
@@ -141,16 +180,11 @@ export async function checkStayAlerts(
       hasWifi &&
       (stay.rating ?? 0) >= 8
     ) {
-      const msg = formatStayAlert(stay);
-      const sent = await sendTelegramMessage(`🏆 Great deal!\n\n${msg}`);
-      if (sent) {
-        await logAlert("stay", msg, stay.pricePerNightUsdCents, "USD");
-        alertsSent++;
-      }
+      deals.push({ stay, reason: "great deal (kitchen+wifi+8★)" });
     }
   }
 
-  // Check custom alert configs
+  // Check custom configs
   const configs = await db
     .select()
     .from(alertConfigs)
@@ -166,19 +200,39 @@ export async function checkStayAlerts(
             : stay.pricePerNightUsdCents;
 
       if (priceCents < config.thresholdCents) {
-        const msg = formatStayAlert(stay);
-        const sent = await sendTelegramMessage(
-          `🔔 Alert: ${config.label}\n\n${msg}`,
+        const alreadyAdded = deals.some(
+          (d) => d.stay.name === stay.name && d.stay.platform === stay.platform,
         );
-        if (sent) {
-          await logAlert("stay", msg, priceCents, config.currency, config.id);
-          alertsSent++;
+        if (!alreadyAdded) {
+          deals.push({ stay, reason: config.label });
         }
       }
     }
   }
 
-  return { alertsSent, errors };
+  // Send one consolidated message
+  if (deals.length > 0) {
+    let msg = `🏠 <b>STAY DEALS FOUND (${deals.length})</b>\n\n`;
+    for (const deal of deals) {
+      msg += formatStayLine(deal) + "\n\n";
+    }
+
+    const sent = await sendTelegramMessage(msg);
+    if (sent) {
+      for (const deal of deals) {
+        await logAlert(
+          "stay",
+          `${deal.reason}`,
+          deal.stay.pricePerNightUsdCents,
+          "USD",
+        );
+      }
+    } else {
+      errors.push("Failed to send consolidated stay alert");
+    }
+  }
+
+  return { alertsSent: deals.length > 0 ? 1 : 0, errors };
 }
 
 async function logAlert(
