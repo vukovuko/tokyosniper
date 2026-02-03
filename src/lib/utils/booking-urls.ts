@@ -1,7 +1,6 @@
 /**
  * Generate a Skyscanner search URL for a flight
- * Uses official Skyscanner format: /transport/flights/{origin}/{destination}/{date}/{returnDate}/
- * Docs: https://developers.skyscanner.net/docs/referrals/flights-parameters
+ * Skyscanner format: /transport/flights/{origin}/{destination}/{YYMMDD}/{YYMMDD}/
  */
 export function generateGoogleFlightsUrl(
   origin: string,
@@ -9,12 +8,17 @@ export function generateGoogleFlightsUrl(
   departureDate: string,
   returnDate?: string,
 ): string {
-  const base = `https://www.skyscanner.net/transport/flights/${origin.toLowerCase()}/${destination.toLowerCase()}/${departureDate}`;
+  // Convert YYYY-MM-DD to YYMMDD
+  const formatDate = (date: string) => date.replace(/-/g, "").slice(2);
+
+  const depFormatted = formatDate(departureDate);
+  const base = `https://www.skyscanner.net/transport/flights/${origin.toLowerCase()}/${destination.toLowerCase()}/${depFormatted}`;
 
   if (returnDate) {
-    return `${base}/${returnDate}/?adults=1&cabinclass=economy`;
+    const retFormatted = formatDate(returnDate);
+    return `${base}/${retFormatted}/`;
   }
-  return `${base}/?adults=1&cabinclass=economy`;
+  return `${base}/`;
 }
 
 /**
