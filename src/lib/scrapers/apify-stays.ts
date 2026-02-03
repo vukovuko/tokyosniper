@@ -53,7 +53,7 @@ export async function scrapeBookingCom(
       adults: 1,
       rooms: 1,
       minScore: 8,
-      propertyType: "apartment",
+      propertyType: "Apartments",
       sortBy: "price",
       maxItems: 20,
     });
