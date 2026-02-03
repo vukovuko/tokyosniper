@@ -27,10 +27,8 @@ export async function GET(req: Request) {
 
   const result = await fetchAndStoreFlights();
 
-  // Check alerts with the newly found flights data
-  // We pass empty array here since alerts check is against DB
-  // The actual alert checking uses the freshly inserted data
-  const alertResult = await checkFlightAlerts([]);
+  // Check alerts with the newly found flights
+  const alertResult = await checkFlightAlerts(result.flights);
 
   // Invalidate dashboard cache
   await invalidateKeys("dashboard:*", "flights:*");

@@ -52,10 +52,10 @@ export async function scrapeBookingCom(
       language: "en-us",
       adults: 1,
       rooms: 1,
-      minScore: 8,
+      minScore: "8",
       propertyType: "Apartments",
       sortBy: "price",
-      maxItems: 20,
+      maxPages: 20,
     });
 
     const { items } = await client.dataset(run.defaultDatasetId).listItems();

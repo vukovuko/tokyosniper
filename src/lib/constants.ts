@@ -80,8 +80,8 @@ export const MONITORED_PROPERTIES = [
 
 // Default alert thresholds
 export const DEFAULT_FLIGHT_ALERTS = {
-  instantEurCents: 60000, // €600 round trip
-  digestEurCents: 80000, // €800 round trip
+  instantEurCents: 80000, // €800 round trip
+  digestEurCents: 100000, // €1000 round trip
   dropPercent: 10,
 } as const;
 

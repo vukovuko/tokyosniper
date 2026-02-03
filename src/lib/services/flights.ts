@@ -43,6 +43,7 @@ interface FlightCheckResult {
   newRecords: number;
   errors: string[];
   cheapestEurCents: number | null;
+  flights: FlightResult[];
 }
 
 export async function fetchAndStoreFlights(): Promise<FlightCheckResult> {
@@ -94,9 +95,11 @@ export async function fetchAndStoreFlights(): Promise<FlightCheckResult> {
     }
   }
 
-  // Deduplicate by airline + date + stops + price
+  // Filter out flights over €1200 and deduplicate
+  const MAX_PRICE_EUR_CENTS = 120000;
   const seen = new Set<string>();
   const unique = allResults.filter((r) => {
+    if (r.priceEurCents > MAX_PRICE_EUR_CENTS) return false;
     const key = `${r.airline}-${r.departureDate}-${r.stops}-${r.priceEurCents}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -135,6 +138,7 @@ export async function fetchAndStoreFlights(): Promise<FlightCheckResult> {
     newRecords,
     errors,
     cheapestEurCents: cheapest,
+    flights: unique,
   };
 }
 
