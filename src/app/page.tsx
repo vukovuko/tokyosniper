@@ -107,6 +107,16 @@ export default async function OverviewPage() {
                   {formatPrice(f.priceUsdCents, "USD")} ·{" "}
                   {formatPrice(f.priceRsdCents, "RSD")}
                 </div>
+                {f.bookingUrl && (
+                  <a
+                    href={f.bookingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-xs text-primary hover:underline"
+                  >
+                    Book this flight →
+                  </a>
+                )}
               </div>
             ))}
           </div>
@@ -119,7 +129,10 @@ export default async function OverviewPage() {
         <div className="rounded-lg border border-border bg-card p-4">
           <FlightChart
             data={history.map((h) => ({
-              checkedAt: h.checkedAt.toISOString(),
+              checkedAt:
+                h.checkedAt instanceof Date
+                  ? h.checkedAt.toISOString()
+                  : String(h.checkedAt),
               priceEurCents: h.priceEurCents,
               destination: h.destination,
             }))}

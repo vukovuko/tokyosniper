@@ -48,8 +48,8 @@ export default async function FlightsPage() {
           </li>
           <li>
             <span className="font-medium text-foreground">Sources:</span>{" "}
-            Skyscanner (via {APIFY_ACTORS.skyscannerFlights}), Google Flights
-            (via {APIFY_ACTORS.googleFlights}), SerpAPI fallback
+            Amadeus API, Skyscanner (via {APIFY_ACTORS.skyscannerFlights}),
+            Google Flights (via {APIFY_ACTORS.googleFlights})
           </li>
           <li>
             <span className="font-medium text-foreground">Schedule:</span> Cron
@@ -86,7 +86,10 @@ export default async function FlightsPage() {
         <div className="rounded-lg border border-border bg-card p-4">
           <FlightChart
             data={history.map((h) => ({
-              checkedAt: h.checkedAt.toISOString(),
+              checkedAt:
+                h.checkedAt instanceof Date
+                  ? h.checkedAt.toISOString()
+                  : String(h.checkedAt),
               priceEurCents: h.priceEurCents,
               destination: h.destination,
             }))}
@@ -120,6 +123,7 @@ export default async function FlightsPage() {
                   <th className="px-3 py-2 text-right font-medium">RSD</th>
                   <th className="px-3 py-2 text-center font-medium">Stops</th>
                   <th className="px-3 py-2 text-left font-medium">Source</th>
+                  <th className="px-3 py-2 text-center font-medium">Book</th>
                 </tr>
               </thead>
               <tbody>
@@ -149,6 +153,20 @@ export default async function FlightsPage() {
                       </td>
                       <td className="px-3 py-2 text-center">{f.stops ?? 0}</td>
                       <td className="px-3 py-2">{f.source}</td>
+                      <td className="px-3 py-2 text-center">
+                        {f.bookingUrl ? (
+                          <a
+                            href={f.bookingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Book →
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                     </tr>
                   );
                 })}

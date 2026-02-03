@@ -4,14 +4,14 @@ import {
   scrapeSkyscannerFlights,
   scrapeGoogleFlightsApify,
 } from "@/src/lib/scrapers/apify-flights";
-import { scrapeSerpApiFlights } from "@/src/lib/scrapers/serpapi-flights";
+import { searchAmadeusFlights } from "@/src/lib/scrapers/amadeus-flights";
 import {
   FLIGHT_ROUTES,
   TRIP_WINDOWS,
   DEPARTURE_DAYS,
   RETURN_OFFSETS,
 } from "@/src/lib/constants";
-import type { FlightResult } from "@/src/types";
+import type { FlightResult, ScraperResult } from "@/src/types";
 import { eq, and, desc } from "drizzle-orm";
 import { format, addDays } from "date-fns";
 
@@ -53,51 +53,42 @@ export async function fetchAndStoreFlights(): Promise<FlightCheckResult> {
 
   for (const route of FLIGHT_ROUTES) {
     for (const trip of tripPairs) {
-      // Try Skyscanner first
-      const skyscanner = await scrapeSkyscannerFlights(
-        route.origin,
-        route.destination,
-        trip.departure,
-        trip.return,
-      );
-
-      if (skyscanner.success && skyscanner.data.length > 0) {
-        allResults.push(...skyscanner.data);
-      } else {
-        if (skyscanner.error)
-          errors.push(
-            `Skyscanner ${route.label} ${trip.label}: ${skyscanner.error}`,
-          );
-
-        // Fallback to Google Flights via Apify
-        const gf = await scrapeGoogleFlightsApify(
+      // Call all sources in parallel
+      const [amadeus, skyscanner, googleFlights] = await Promise.all([
+        searchAmadeusFlights(
           route.origin,
           route.destination,
           trip.departure,
           trip.return,
-        );
+        ),
+        scrapeSkyscannerFlights(
+          route.origin,
+          route.destination,
+          trip.departure,
+          trip.return,
+        ),
+        scrapeGoogleFlightsApify(
+          route.origin,
+          route.destination,
+          trip.departure,
+          trip.return,
+        ),
+      ]);
 
-        if (gf.success && gf.data.length > 0) {
-          allResults.push(...gf.data);
-        } else {
-          if (gf.error)
-            errors.push(
-              `Google Flights Apify ${route.label} ${trip.label}: ${gf.error}`,
-            );
+      // Collect results from all sources
+      const sources: ScraperResult<FlightResult>[] = [
+        amadeus,
+        skyscanner,
+        googleFlights,
+      ];
 
-          // Last resort: SerpAPI
-          const serp = await scrapeSerpApiFlights(
-            route.origin,
-            route.destination,
-            trip.departure,
-            trip.return,
+      for (const source of sources) {
+        if (source.success && source.data.length > 0) {
+          allResults.push(...source.data);
+        } else if (source.error) {
+          errors.push(
+            `${source.source} ${route.label} ${trip.label}: ${source.error}`,
           );
-
-          if (serp.success && serp.data.length > 0) {
-            allResults.push(...serp.data);
-          } else if (serp.error) {
-            errors.push(`SerpAPI ${route.label} ${trip.label}: ${serp.error}`);
-          }
         }
       }
     }

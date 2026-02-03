@@ -44,7 +44,7 @@ export const RETURN_OFFSETS = [9, 11, 14] as const;
 // Apify actor IDs — easy to swap if deprecated
 export const APIFY_ACTORS = {
   skyscannerFlights: "canadesk/skyscanner-flights-api",
-  googleFlights: "jupri/google-flights-scraper",
+  googleFlights: "simpleapi/google-flights-scraper",
   bookingCom: "voyager/booking-scraper",
   airbnb: "tri_angle/airbnb-scraper",
 } as const;
